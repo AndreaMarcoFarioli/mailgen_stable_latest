@@ -176,7 +176,8 @@ export interface account {
     email: string,
     password: string,
     extension?: string,
-    activated?: boolean
+    activated?: boolean,
+    recovery?: string
 }
 
 export type inboxString = "proton" | "spotify" | "outlookCrossVerification"

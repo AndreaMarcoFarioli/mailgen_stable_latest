@@ -304,8 +304,9 @@ export class OutlookDriver implements ProviderDriver {
             let input = await waitElement(conf.uniqueStructure.outlook.register.inputCodeProof, driver);
             await input.sendKeys(code, Key.ENTER);
         }
-
+        
         sleep(10000);
+        this.account.recovery = account.email;
         this.account.activated = true;
     }
 }
