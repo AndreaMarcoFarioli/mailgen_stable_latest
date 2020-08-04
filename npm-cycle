@@ -1,0 +1,8 @@
+npx tsc
+for (( c=0; c<10000000; c++ ))
+do
+	npm start
+	echo a | sudo -S killall openvpn
+	echo a | sudo -S killall chromedriver
+	sleep 5
+done
