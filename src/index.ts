@@ -11,6 +11,7 @@ import { conf } from "./data/structure"
 //@ts-ignore
 import ua from "fake-useragent"
 import { randomLinePick } from "./utils/fileUtilities";
+import { ObjectID } from "mongodb";
 let drivers: WebDriver[] = [];
 let maxRoutine = getRoutinesLength();
 let counter = 0;
@@ -78,20 +79,14 @@ export async function closeDrivers(n: number = 0) {
 
 }
 
-process.on("beforeExit", async () => {
-    if (drivers.length > 0)
-        closeDrivers();
-})
-
 async function vpn() {
     if (!res)
         return;
     counter++;
-    // cont = randomLinePick(join(__dirname, "../countries.txt"))
-    cont = "it";
+    cont = randomLinePick(join(__dirname, "../countries.txt"))
     worker = new Worker(join(__dirname, "/workers/vpn_thread.js"), {
         workerData: {
-            country: cont
+            country: "fr"
         }
     });
 
@@ -140,6 +135,7 @@ async function vpn() {
 
 }
 
+
 startDB();
 async function startDB() {
     await d.start();
@@ -147,26 +143,45 @@ async function startDB() {
     await vpn();
 }
 
-async function confirmSpoti() {
-    let list = fs.readFileSync(join(__dirname, "../data/mailSpotifyToConfirm.txt"));
-    let lines = list.toString("ascii").split(/\r?\n\r?/g);
-    console.log(lines);
-    let line = lines.pop();
-    fs.unlinkSync(join(__dirname, "../data/mailSpotifyToConfirm.txt"));
-    lines.forEach(e => {
-        fs.appendFileSync(join(__dirname, "../data/mailSpotifyToConfirm.txt"), "\n"+ e )
-    });
 
+async function confirmSpoti() {
+    let line, db: any;
+    if (!conf.from_db) {
+        let list = fs.readFileSync(join(__dirname, "../data/mailSpotifyToConfirm.txt"));
+        let lines = list.toString("ascii").split(/\r?\n\r?/g);
+        console.log(lines);
+        line = lines.pop();
+        fs.unlinkSync(join(__dirname, "../data/mailSpotifyToConfirm.txt"));
+        lines.forEach(e => {
+            fs.appendFileSync(join(__dirname, "../data/mailSpotifyToConfirm.txt"), "\n" + e)
+        });
+    } else {
+        db = await d.getUserForConfirm();
+        line = db.email + ":" + db.password;
+        await d.setUserInUsed(new ObjectID(db._id));
+        process.on("beforeExit", () => {
+            console.log("test");
+            //@ts-ignore
+            d.setUserInUsed(new ObjectID(db._id), false);
+        });
+    }
+    console.log(db)
     console.log(line);
     if (line && !line.includes("proton")) {
-        let account = createAccount(line, undefined)
+        let account;
+        account = createAccount(line, undefined);
         let provider = detectProvider(account.email);
         if (provider) {
             console.log(account)
             await forProvider(provider).inbox(account, "spotify");
         }
-        fs.appendFileSync(join(__dirname, "../data/mailSpotifyUsed.txt"), line + "\n");
-    }else {process.exit()}
+        if (!conf.from_db)
+            fs.appendFileSync(join(__dirname, "../data/mailSpotifyUsed.txt"), line + "\n");
+        else{
+            await d.setSpotifyConfirmed(new ObjectID(db._id));
+            await d.setUserInUsed(new ObjectID(db._id), false)
+        }
+    } else { process.exit() }
 }
 
 

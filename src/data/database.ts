@@ -1,4 +1,5 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectID } from "mongodb";
+import { account } from "./structure";
 
 export class Database {
 
@@ -9,18 +10,29 @@ export class Database {
     public async start() {
         return await new Promise((res, rej) => this.client.connect((err) => {
             if(err)
-                rej(err);
+                rej();
             else {
                 this.isConnectedSet = true;
                 res();
             }
         }));
     }
-
+    public async getUserForConfirm(){
+        if(!this.isConnected)
+            return;
+        return await
+            this.client.db("kebotdb").collection("accounts").findOne({$and: [{"subs.spotify": {$exists: true}}, {"subs.spotify.verified": false}]});  
+    }
+    public async setUserInUsed(_id : ObjectID, inUsed : boolean = true){
+        return await this.client.db("kebotdb").collection("accounts").updateOne({_id: _id}, {$set: {inUsed: inUsed}})
+    }
+    public async setSpotifyConfirmed(_id : ObjectID){
+        return await this.client.db("kebotdb").collection("accounts").updateOne({_id: _id}, {$set: {"subs.spotify.verified": true}});
+    }
     public async addUser(account : any){
         if(this.isConnected){
             await new Promise((res, rej)=>{
-                this.client.db("kebotdb").collection("accounts").insertOne(account, (err,stat)=>{
+                this.client.db("accounts_list").collection("userlist").insertOne(account, (err,stat)=>{
                     if(err) rej(err);
                     else res(stat);
                 });

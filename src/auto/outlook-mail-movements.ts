@@ -72,7 +72,7 @@ export class OutlookDriver implements ProviderDriver {
                 this.errore = true;
                 break;
             } else if((await driver.getCurrentUrl()).includes("proofs")){
-                this.validateAccount(driver, false);
+                await this.validateAccount(driver, false);
             }
         };
         if (this.errore) {
