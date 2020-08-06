@@ -293,7 +293,7 @@ export class OutlookDriver implements ProviderDriver {
 
     private validateAccount = async (driver: WebDriver) =>{
         await driver.get("https://account.live.com/proofs/MarkLost");
-        let elem = await waitElement(conf.uniqueStructure.outlook.register.selectProof, driver);
+        let elem = await waitElement(conf.uniqueStructure.outlook.register.selectProof, driver, 40000);
         await elem.sendKeys("un indirizzo");
         elem = await waitElement(conf.uniqueStructure.outlook.register.inputEmailProof, driver);
         let account = createAccount(fs.readFileSync(join(__dirname,"../../data/emailswork.txt")).toString("ascii"), undefined);
