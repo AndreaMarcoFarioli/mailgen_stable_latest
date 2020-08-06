@@ -71,6 +71,8 @@ export class OutlookDriver implements ProviderDriver {
             } else if ((await driver.getCurrentUrl()).includes("Abuse")) {
                 this.errore = true;
                 break;
+            } else if((await driver.getCurrentUrl()).includes("proofs")){
+                this.validateAccount(driver, false);
             }
         };
         if (this.errore) {
@@ -291,7 +293,8 @@ export class OutlookDriver implements ProviderDriver {
         } catch (e) { }
     }
 
-    private validateAccount = async (driver: WebDriver) =>{
+    private validateAccount = async (driver: WebDriver, load:boolean=true) =>{
+        if(load)
         await driver.get("https://account.live.com/proofs/MarkLost");
         let elem = await waitElement(conf.uniqueStructure.outlook.register.selectProof, driver, 40000);
         await elem.sendKeys("un indirizzo");
