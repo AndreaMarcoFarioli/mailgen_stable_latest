@@ -31,13 +31,14 @@ export class OutlookDriver implements ProviderDriver {
         sleep(250)
         await this.setAge(driver);
         sleep(250)
-        await this.solveCaptcha(driver);
+        let k = await this.solveCaptcha(driver);
         sleep(250);
         if (this.solved && !this.error) {
             //await this.openOther(await waitElement(conf.uniqueStructure.outlook.inbox.mailLowImportanceIcon, driver), driver);
             //await this.openEmail(await waitElement(conf.uniqueStructure.outlook.inbox.mailIncome, driver), driver, false);
         }
-        await this.validateAccount(driver);
+        if(k)
+            await this.validateAccount(driver);
         
         return { ac: account, res: this.res };
     };
@@ -290,6 +291,7 @@ export class OutlookDriver implements ProviderDriver {
                     return await (await driver.getCurrentUrl()).includes("https://outlook.live.com/mail/0/inbox")
                 }, 80000).then(() => { res(); this.res = true }).catch(() => res());
             })
+            return true;
         } catch (e) { }
     }
 

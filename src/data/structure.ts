@@ -31,7 +31,11 @@ export interface Structure {
 
 export let conf = {
     confirm_spotify: true,
-    from_db: true,
+    crossVerification: {
+        forProviders: ["outlook"],
+        value: true
+    },
+    from_db: false,
     pattern: {
         gmail: /.*@gmail.com/,
         outlook: [
@@ -49,12 +53,17 @@ export let conf = {
         },
         outlook: {
             login: "https://login.live.com/login.srf?wa=wsignin1.0&rpsnv=13&ct=1594037845&rver=7.0.6737.0&wp=MBI_SSL&wreply=https%3a%2f%2foutlook.live.com%2fowa%2f%3fRpsCsrfState%3d878f3ed6-1007-05de-b41f-7f6a7f82da70&id=292841&aadredir=1&CBCXT=out&lw=1&fl=dob%2cflname%2cwld&cobrandid=90015",
-            register: "https://signup.live.com/signup?wa=wsignin1.0&wp=MBI_SSL&wreply=https:%2F%2Foutlook.live.com%2Fowa%2F&uiflavor=web"
+            register: "https://signup.live.com/signup?wa=wsignin1.0&wp=MBI_SSL&wreply=https:%2F%2Foutlook.live.com%2Fowa%2F&uiflavor=web",
+            profile: "https://account.microsoft.com/profile/",
+            loginBlank: "https://login.live.com/login.srf"
         },
         yandex: {
             login: "",
             register: "https://passport.yandex.com/registration?from=mail",
             success: "https://passport.yandex.com/profile"
+        },
+        tiscali: {
+            register: "https://mail.tiscali.it/?_action=plugin.tiscali_registrazione"
         }
     },
     uniqueStructure: {
@@ -90,6 +99,9 @@ export let conf = {
                     },
                     spotify: {
                         activation: By.css("[role='listbox'] [tabindex][aria-label*='podcast' i][aria-label*='da leggere' i]")
+                    },
+                    outlookCrossVerification: {
+                        activation: By.css("[role='listbox'] [tabindex][aria-label*='*@' i]")
                     }
                 },
 
@@ -101,8 +113,14 @@ export let conf = {
                     },
                     spotify: {
                         link: By.css("a[href][target='_blank'].x_call-to-action-button")
+                    },
+                    outlookCrossVerification: {
+                        code: By.css("span[style*='#2a2a2a']")
                     }
                 }
+            },
+            verification: {
+                buttonUploadProfileIcon: By.xpath('//*[@id="edit-picture-save"]')
             },
             register: {
                 email: By.xpath('//*[@id="MemberName"]'),
@@ -119,6 +137,9 @@ export let conf = {
                 error: By.css(".alert.alert-error.floatLeft:nth-child(3)"),
                 extensionParent: By.xpath('//*[@id="CredentialsInputPane"]/fieldset/div[1]/div[3]/div[2]/div/div'),
                 extension: By.xpath('//*[@id="LiveDomainBoxList"]'),
+                selectProof: By.xpath('//*[@id="iProofOptions"]'),
+                inputEmailProof: By.xpath('//*[@id="EmailAddress"]'),
+                inputCodeProof: By.xpath('//*[@id="iOttText"]')
             }
         },
         yandex: {
@@ -138,6 +159,13 @@ export let conf = {
                 noPhone: By.xpath('//*[@id="root"]/div/div[2]/div/main/div/div/div/form/div[3]/div/div[2]/div/div[1]'),
                 parentPolicy: By.xpath('//*[@id="root"]/div/div[2]/div/main/div/div/div/form/div[4]/div')
             }
+        },
+        tiscali: {
+            register: {
+                name: By.xpath('//*[@id="regis_nome"]'),
+                lastname: By.xpath('//*[@id="regis_cognome"]'),
+
+            }
         }
     }
 }
@@ -148,15 +176,15 @@ export interface account {
     surname: string,
     email: string,
     password: string,
-    extension?: string
+    extension?: string,
+    activated?: boolean,
+    recovery?: string
 }
 
-export type inboxString = "proton" | "spotify"
+export type inboxString = "proton" | "spotify" | "outlookCrossVerification"
 
 export function createAccount(name: string, surname: string | undefined): account {
     let account_cre: account;
-
-
 
     if (surname !== undefined) {
         name = name.toLowerCase();
@@ -186,11 +214,12 @@ export function createAccount(name: string, surname: string | undefined): accoun
         }
     }
 
-    return account_cre;
+    return {...account_cre, activated: false };
 }
 
 export interface ProviderDriver {
     register: (account: account) => { ac: account, res: boolean } | Promise<{ ac: account, res: boolean }>,
     inbox: (account: account, inboxFor: inboxString) => string | Promise<string>,
+    crossValidation?: (account: account, accountForValidation : account) => boolean | Promise<boolean>;
     account: account
 }

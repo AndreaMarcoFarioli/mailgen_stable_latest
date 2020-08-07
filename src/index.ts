@@ -159,10 +159,10 @@ async function confirmSpoti() {
         db = await d.getUserForConfirm();
         line = db.email + ":" + db.password;
         await d.setUserInUsed(new ObjectID(db._id));
-        process.on("beforeExit", () => {
+        process.on("beforeExit", async () => {
             console.log("test");
             //@ts-ignore
-            d.setUserInUsed(new ObjectID(db._id), false);
+            await d.setUserInUsed(new ObjectID(db._id), false);
         });
     }
     console.log(db)
