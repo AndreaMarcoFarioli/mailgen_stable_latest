@@ -86,7 +86,7 @@ async function vpn() {
     cont = randomLinePick(join(__dirname, "../countries.txt"))
     worker = new Worker(join(__dirname, "/workers/vpn_thread.js"), {
         workerData: {
-            country: "fr"
+            country: "it"
         }
     });
 

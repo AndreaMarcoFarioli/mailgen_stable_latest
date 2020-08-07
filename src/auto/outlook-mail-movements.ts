@@ -80,6 +80,7 @@ export class OutlookDriver implements ProviderDriver {
             await driver.close()
             return "";
         }
+        sleep(3000);
         await this.openOther(driver, inboxFor);
 
         if (this.errore) {
@@ -129,7 +130,9 @@ export class OutlookDriver implements ProviderDriver {
 
         await new Promise((res) => {
             waitElement(conf.uniqueStructure.outlook.inbox.continue, driver, 11000).then(e => {
-                e.click().finally(res);
+                e.click().then()
+                .catch()
+                .finally(res);
             }).catch(async () => {
                 waitElement(conf.uniqueStructure.outlook.inbox.locked, driver, 1).catch(res).then(() => {
                     error = true; res();

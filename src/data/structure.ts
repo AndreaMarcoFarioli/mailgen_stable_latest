@@ -30,7 +30,7 @@ export interface Structure {
 
 
 export let conf = {
-    confirm_spotify: true,
+    confirm_spotify: false,
     crossVerification: {
         forProviders: ["outlook"],
         value: true
@@ -105,7 +105,7 @@ export let conf = {
                     }
                 },
 
-                continue: By.css('.ms-Button--primary'),
+                continue: By.css('.ms-Dialog-action .ms-Button--primary'),
                 locked: By.css("#StartAction"),
                 activation: {
                     proton: {
