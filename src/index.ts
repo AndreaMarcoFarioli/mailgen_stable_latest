@@ -11,7 +11,7 @@ import { conf } from "./data/structure"
 //@ts-ignore
 import ua from "fake-useragent"
 import { randomLinePick } from "./utils/fileUtilities";
-import { ObjectID } from "mongodb";
+import { ObjectID, Db } from "mongodb";
 let drivers: WebDriver[] = [];
 let maxRoutine = getRoutinesLength();
 let counter = 0;
@@ -82,6 +82,11 @@ export async function closeDrivers(n: number = 0) {
 async function vpn() {
     if (!res)
         return;
+    await loopback();
+    async function loopback(){
+        await caput();
+    }
+    return;
     counter++;
     cont = randomLinePick(join(__dirname, "../countries.txt"))
     worker = new Worker(join(__dirname, "/workers/vpn_thread.js"), {
@@ -107,6 +112,7 @@ async function vpn() {
         worker.on("message", async (data) => {
             if (data === "start") {
                 if (conf.confirm_spotify) await confirmSpoti();
+                if(conf.caput) await caput();
                 else {
                     await start();
 
@@ -143,6 +149,10 @@ async function startDB() {
     await vpn();
 }
 
+async function caput(){
+    let caput = await d.getCaputUser();
+    console.log(caput);
+}
 
 async function confirmSpoti() {
     let line, db: any;

@@ -36,6 +36,7 @@ export let conf = {
         value: true
     },
     from_db: false,
+    caput: true,
     pattern: {
         gmail: /.*@gmail.com/,
         outlook: [
@@ -102,6 +103,9 @@ export let conf = {
                     },
                     outlookCrossVerification: {
                         activation: By.css("[role='listbox'] [tabindex][aria-label*='*@' i]")
+                    },
+                    restoreCaput: {
+                        activation: By.css("[role='listbox'] [tabindex][aria-label*='ve reset your password' i]")
                     }
                 },
 
@@ -181,7 +185,7 @@ export interface account {
     recovery?: string
 }
 
-export type inboxString = "proton" | "spotify" | "outlookCrossVerification"
+export type inboxString = "proton" | "spotify" | "outlookCrossVerification" | "restoreCaput"
 
 export function createAccount(name: string, surname: string | undefined): account {
     let account_cre: account;

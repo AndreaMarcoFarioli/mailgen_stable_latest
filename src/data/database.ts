@@ -39,4 +39,10 @@ export class Database {
             });
         }
     }
+
+    public async getCaputUser(){
+        if(!this.isConnected)
+            return;
+        return await this.client.db("kebotdb").collection("accounts").find({"subs.spotify.caput": true}).toArray();
+    }
 }
