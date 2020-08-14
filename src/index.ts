@@ -12,6 +12,8 @@ import { conf } from "./data/structure"
 import ua from "fake-useragent"
 import { randomLinePick } from "./utils/fileUtilities";
 import { ObjectID, Db } from "mongodb";
+import { create } from "domain";
+import { getBalance } from "./utils/captchaUtils";
 let drivers: WebDriver[] = [];
 let maxRoutine = getRoutinesLength();
 let counter = 0;
@@ -34,7 +36,6 @@ export async function start() {
             res();
         })
     })
-    await closeDrivers();
     console.log(error);
     if (error)
         process.exit();
@@ -64,29 +65,14 @@ export async function newDriver() {
     return m;
 }
 
-export function closeDriver(driver: WebDriver) {
-    drivers.splice(drivers.indexOf(driver), 1);
-}
-
-export async function closeDrivers(n: number = 0) {
-    let error = false;
-    await new Promise(res => {
-        drivers[n].close().then(res).catch(() => { res(); error = true });
-    })
-    closeDriver(drivers[n])
-    if (drivers[++n] !== undefined)
-        await closeDrivers(n);
-
-}
-
 async function vpn() {
     if (!res)
         return;
-    await loopback();
-    async function loopback(){
+    // await loopback();
+    async function loopback() {
         await caput();
     }
-    return;
+    // return;
     counter++;
     cont = randomLinePick(join(__dirname, "../countries.txt"))
     worker = new Worker(join(__dirname, "/workers/vpn_thread.js"), {
@@ -112,25 +98,9 @@ async function vpn() {
         worker.on("message", async (data) => {
             if (data === "start") {
                 if (conf.confirm_spotify) await confirmSpoti();
-                if(conf.caput) await caput();
+                else if (conf.caput) await caput();
                 else {
                     await start();
-
-                    // let w1 = new Worker(join(__dirname, "workers/thread.js"));
-                    // let w2 = new Worker(join(__dirname, "workers/thread.js"));
-                    // let close1 = false;
-                    // let close2 = false;
-                    // w1.on("exit", ()=>{
-                    //     close1 = true;
-                    //     if(close2 === close1)
-                    //         worker.postMessage("exit");
-                    // })
-
-                    // w2.on("exit", ()=>{
-                    //     close2 = true;
-                    //     if(close2 === close1)
-                    //         worker.postMessage("exit");
-                    // })
                 };
                 res();
             }
@@ -141,17 +111,34 @@ async function vpn() {
 
 }
 
-
 startDB();
 async function startDB() {
+    await getBalance();
     await d.start();
+    console.log(`Machine id: ${d._id}`)
     console.log("Database connected");
     await vpn();
 }
 
-async function caput(){
+async function caput() {
     let caput = await d.getCaputUser();
-    console.log(caput);
+    // console.log(caput)
+    if (!caput)
+        return;
+    let line = `${caput.email}:${caput.password}`;
+    let account = createAccount(line, undefined);
+    let provider = detectProvider(account.email);
+    if (provider) {
+        let res = await forProvider(provider).inbox(account, "restoreCaput");
+        console.log(res);
+        if (res === "empty") {
+            console.log("not found mail")
+        } else if (res !== "ERROR_DISABLED") {
+            await d.setPasswordAccount(new ObjectID(caput._id), res, caput.subs.spotify.password);
+        }
+    }
+    await d.setAccountPick(new ObjectID(caput._id));
+    process.exit();
 }
 
 async function confirmSpoti() {
@@ -167,17 +154,19 @@ async function confirmSpoti() {
         });
     } else {
         db = await d.getUserForConfirm();
-        line = db.email + ":" + db.password;
-        await d.setUserInUsed(new ObjectID(db._id));
-        process.on("beforeExit", async () => {
-            console.log("test");
-            //@ts-ignore
-            await d.setUserInUsed(new ObjectID(db._id), false);
-        });
+        if (db) {
+            line = db.email + ":" + db.password;
+            await d.setUserInUsed(new ObjectID(db._id));
+            process.on("beforeExit", async () => {
+                console.log("test");
+                //@ts-ignore
+                await d.setUserInUsed(new ObjectID(db._id), false);
+            });
+        }
     }
     console.log(db)
     console.log(line);
-    if (line && !line.includes("proton")) {
+    if (line && !line.includes("proton") && db) {
         let account;
         account = createAccount(line, undefined);
         let provider = detectProvider(account.email);
@@ -187,7 +176,7 @@ async function confirmSpoti() {
         }
         if (!conf.from_db)
             fs.appendFileSync(join(__dirname, "../data/mailSpotifyUsed.txt"), line + "\n");
-        else{
+        else {
             await d.setSpotifyConfirmed(new ObjectID(db._id));
             await d.setUserInUsed(new ObjectID(db._id), false)
         }

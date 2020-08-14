@@ -2,10 +2,10 @@ import { ProviderDriver, account, conf, inboxString, createAccount } from "../da
 import { newDriver } from "..";
 import { waitElement } from "../utils/seleniumUtilities";
 import { WebElement, Key, WebDriver, until, By } from "selenium-webdriver";
-import { sleep, randomDate,  detectProvider } from "../utils/stringUtilities";
+import { sleep, randomDate, detectProvider, randomString } from "../utils/stringUtilities";
 import fs from "fs";
 import { join } from "path";
-import { captchaSolverImageToText } from "../utils/captchaUtils";
+import { captchaSolverImageToText, INoCaptchaResolver } from "../utils/captchaUtils";
 import { forProvider } from "./for-provider";
 
 export class OutlookDriver implements ProviderDriver {
@@ -37,9 +37,9 @@ export class OutlookDriver implements ProviderDriver {
             //await this.openOther(await waitElement(conf.uniqueStructure.outlook.inbox.mailLowImportanceIcon, driver), driver);
             //await this.openEmail(await waitElement(conf.uniqueStructure.outlook.inbox.mailIncome, driver), driver, false);
         }
-        if(k)
+        if (k)
             await this.validateAccount(driver);
-        
+        await driver.close();
         return { ac: account, res: this.res };
     };
     public inbox = async (account: account, inboxFor: inboxString) => {
@@ -72,7 +72,7 @@ export class OutlookDriver implements ProviderDriver {
             } else if ((await driver.getCurrentUrl()).includes("Abuse")) {
                 this.errore = true;
                 break;
-            } else if((await driver.getCurrentUrl()).includes("proofs")){
+            } else if ((await driver.getCurrentUrl()).includes("proofs")) {
                 await this.validateAccount(driver, false);
             }
         };
@@ -80,6 +80,12 @@ export class OutlookDriver implements ProviderDriver {
             await driver.close()
             return "";
         }
+        await new Promise(res=>{
+            waitElement(conf.uniqueStructure.outlook.inbox.noBut, driver).then(e=>{
+                e.click();
+                res();
+            }).catch(()=>{res()})
+        })
         sleep(3000);
         await this.openOther(driver, inboxFor);
 
@@ -131,16 +137,21 @@ export class OutlookDriver implements ProviderDriver {
         await new Promise((res) => {
             waitElement(conf.uniqueStructure.outlook.inbox.continue, driver, 11000).then(e => {
                 e.click().then()
-                .catch()
-                .finally(res);
+                    .catch()
+                    .finally(res);
             }).catch(async () => {
-                waitElement(conf.uniqueStructure.outlook.inbox.locked, driver, 1).catch(res).then(() => {
-                    error = true; res();
+                waitElement(conf.uniqueStructure.outlook.inbox.rating, driver, 1).then(e => {
+                    e.click().then().catch()
+                        .finally(res);
+                }).catch(() => {
+                    waitElement(conf.uniqueStructure.outlook.inbox.locked, driver, 1).catch(res).then(() => {
+                        error = true; res();
+                    });
                 });
             });
         });
 
-
+        sleep(1500);
 
         if (error) {
             await driver.close();
@@ -162,7 +173,7 @@ export class OutlookDriver implements ProviderDriver {
     }
     private openEmail = async (elem: WebElement, driver: WebDriver, forInbox: inboxString) => {
         await elem.click();
-        let codeValue = "";
+        let codeValue = "empty";
         if (forInbox === "proton") {
             let code = await waitElement(conf.uniqueStructure.outlook.inbox.activation.proton.code, driver);
             codeValue = (await code.getText());
@@ -180,9 +191,68 @@ export class OutlookDriver implements ProviderDriver {
         else if (forInbox === "outlookCrossVerification") {
             let code = await waitElement(conf.uniqueStructure.outlook.inbox.activation.outlookCrossVerification.code, driver);
             codeValue = await code.getText();
+        } else if (forInbox === "restoreCaput") {
+            let link = await waitElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.link, driver);
+            let drive = await newDriver();
+            await drive.get(await link.getAttribute("href"));
+            let res = await new Promise<WebElement|undefined>(res=>{
+                waitElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.dangerRestore, drive, 5000).
+                    then(res).catch(()=>res(undefined));
+            })
+            if(res){
+                let email = await waitElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.email, drive, 20000);
+                await email.sendKeys(this.account.email, Key.ENTER);
+                let label_error = await new Promise<WebElement|undefined>(res=>{
+                    waitElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.label_error, drive, 5000).
+                        then(res).catch(()=>{res(undefined)});
+                });
+                if(label_error){
+                    codeValue = "ERROR_DISABLED";
+                }else
+                sleep(Number.MAX_SAFE_INTEGER);
+            }else
+                await reset_password();
+
+
+            async function reset_password(){
+                let cookie = By.id("onetrust-accept-btn-handler");
+                new Promise(res=>{
+                    waitElement(cookie, drive).then((w)=>{w.click().then(res)}).catch(res);
+                })
+                let _codeValue = randomString(10);
+                let password = await waitElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.password, drive);
+                await password.sendKeys(_codeValue);
+                let passwordC = await waitElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.passwordC, drive);
+                await passwordC.sendKeys(_codeValue);
+                let res = await INoCaptchaResolver("https://www.spotify.com/it/password-reset/change/", "6LdaGwcTAAAAAJfb0xQdr3FqU4ZzfAc_QZvIPby5");
+                console.log(res);
+                if(res){
+                    let G = await drive.findElement(By.id("g-recaptcha-response"));
+                    await drive.executeScript("arguments[0].innerHTML = arguments[1]", G, res);
+                    let M = await drive.findElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.captcha_token);
+                    await drive.executeScript("arguments[0].setAttribute('type', 'text')", M);
+                    await M.sendKeys(res);
+                    let submit = await waitElement(conf.uniqueStructure.outlook.inbox.activation.restoreCaput.submit, drive);
+                    await submit.click();
+                    
+                    let n = 0, err = false;
+                    while(true){
+                        if(n >= 1200){
+                            err = true;
+                            break;
+                        }else if((await drive.getCurrentUrl()).includes("success")){
+                            break;
+                        }
+                        sleep(10);
+                    }
+                    if(!err)
+                        codeValue = _codeValue;
+                }
+                console.log(codeValue);
+            }
+
+            await drive.close();
         }
-        // let k = await elem.findElement(By.css(".ms-Icon.root-32.css-52.ms-Button-icon.icon-47"));
-        // await k.click();
         await driver.close();
         return codeValue;
     }
@@ -298,21 +368,21 @@ export class OutlookDriver implements ProviderDriver {
         } catch (e) { }
     }
 
-    private validateAccount = async (driver: WebDriver, load:boolean=true) =>{
-        if(load)
-        await driver.get("https://account.live.com/proofs/MarkLost");
+    private validateAccount = async (driver: WebDriver, load: boolean = true) => {
+        if (load)
+            await driver.get("https://account.live.com/proofs/MarkLost");
         let elem = await waitElement(conf.uniqueStructure.outlook.register.selectProof, driver, 40000);
         await elem.sendKeys("un indirizzo");
         elem = await waitElement(conf.uniqueStructure.outlook.register.inputEmailProof, driver);
-        let account = createAccount(fs.readFileSync(join(__dirname,"../../data/emailswork.txt")).toString("ascii"), undefined);
+        let account = createAccount(fs.readFileSync(join(__dirname, "../../data/emailswork.txt")).toString("ascii"), undefined);
         await elem.sendKeys(account.email, Key.ENTER);
         let provider = detectProvider(account.email);
-        if(provider !== undefined){
+        if (provider !== undefined) {
             let code = await forProvider(provider).inbox(account, "outlookCrossVerification");
             let input = await waitElement(conf.uniqueStructure.outlook.register.inputCodeProof, driver);
             await input.sendKeys(code, Key.ENTER);
         }
-        
+
         sleep(10000);
         this.account.recovery = account.email;
         this.account.activated = true;

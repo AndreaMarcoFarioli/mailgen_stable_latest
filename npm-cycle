@@ -1,4 +1,5 @@
 npx tsc
+node out/create_session_machine_id.js
 for (( c=0; c<10000000; c++ ))
 do
 	npm start

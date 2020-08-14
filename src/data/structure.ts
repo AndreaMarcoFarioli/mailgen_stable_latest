@@ -30,13 +30,13 @@ export interface Structure {
 
 
 export let conf = {
-    confirm_spotify: false,
+    confirm_spotify: true,
     crossVerification: {
         forProviders: ["outlook"],
         value: true
     },
-    from_db: false,
-    caput: true,
+    from_db: true,
+    caput: false,
     pattern: {
         gmail: /.*@gmail.com/,
         outlook: [
@@ -106,10 +106,14 @@ export let conf = {
                     },
                     restoreCaput: {
                         activation: By.css("[role='listbox'] [tabindex][aria-label*='ve reset your password' i]")
+                    },
+                    restorePasswordSpotify: {
+                        activation: By.css("")
                     }
                 },
-
+                noBut: By.xpath('//*[@id="idBtn_Back"]'),
                 continue: By.css('.ms-Dialog-action .ms-Button--primary'),
+                rating: By.xpath('/html/body/div[6]/div/div/div/div[2]/div[2]/div/div[1]/div[2]/button'),
                 locked: By.css("#StartAction"),
                 activation: {
                     proton: {
@@ -120,6 +124,21 @@ export let conf = {
                     },
                     outlookCrossVerification: {
                         code: By.css("span[style*='#2a2a2a']")
+                    },
+                    restoreCaput:{
+                        link: By.css("div > a[href*='https://wl.spotify.com/ls/click']"),
+                        dangerRestore: By.xpath('//*[@id="content-main"]/div/div/div[2]/div'),
+                        email: By.xpath('//*[@id="form_input"]'),
+                        password: By.xpath('//*[@id="form_new_password"]'),
+                        passwordC: By.xpath('//*[@id="form_check_password"]'),
+                        label_error: By.xpath('//*[@id="form"]/div[1]/div/div/label[2]'),
+                        submit: By.xpath('//*[@id="form_send"]'),
+                        captcha_token: By.id("captcha-hidden")
+                    },
+                    restorePasswordSpotify:{
+                        link: By.css(""),
+                        password: By.xpath(''),
+                        passwordC: By.xpath('')
                     }
                 }
             },
@@ -185,7 +204,7 @@ export interface account {
     recovery?: string
 }
 
-export type inboxString = "proton" | "spotify" | "outlookCrossVerification" | "restoreCaput"
+export type inboxString = "proton" | "spotify" | "outlookCrossVerification" | "restoreCaput" | "restorePasswordSpotify"
 
 export function createAccount(name: string, surname: string | undefined): account {
     let account_cre: account;
